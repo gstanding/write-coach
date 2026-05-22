@@ -14,7 +14,7 @@ enum CLIError: Error, CustomStringConvertible {
 }
 
 struct CLI {
-    static func run() throws {
+    static func run() async throws {
         var args = CommandLine.arguments
         _ = args.removeFirst()
         guard let command = args.first else {
@@ -59,7 +59,7 @@ struct CLI {
 
         case "analyze":
             guard let id = try parseOption(&args, name: "--id") else { throw CLIError.invalidArgs }
-            let suggestions = try service.analyzeDocument(id: id)
+            let suggestions = try await service.analyzeDocument(id: id)
             for s in suggestions {
                 print("[\(s.severity.rawValue)] \(s.ruleId) \(s.range.start)-\(s.range.end) \(s.message)")
             }
@@ -93,10 +93,15 @@ struct CLI {
     }
 }
 
-do {
-    try CLI.run()
-} catch {
-    let data = Data("error: \(error)\n".utf8)
-    try? FileHandle.standardError.write(contentsOf: data)
-    exit(1)
+Task {
+    do {
+        try await CLI.run()
+        exit(0)
+    } catch {
+        let data = Data("error: \(error)\n".utf8)
+        try? FileHandle.standardError.write(contentsOf: data)
+        exit(1)
+    }
 }
+
+dispatchMain()

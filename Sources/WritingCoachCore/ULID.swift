@@ -4,7 +4,7 @@ public enum ULID {
     private static let encoding: [UInt8] = Array("0123456789ABCDEFGHJKMNPQRSTVWXYZ".utf8)
     private nonisolated(unsafe) static var lastTimestampMs: UInt64 = 0
     private nonisolated(unsafe) static var lastRandom: [UInt8] = Array(repeating: 0, count: 10)
-    private nonisolated(unsafe) static let lock = NSLock()
+    private static let lock = NSLock()
 
     public static func generate(now: Date = Date()) -> String {
         let ts = UInt64(now.timeIntervalSince1970 * 1000.0)

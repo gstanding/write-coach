@@ -1,6 +1,6 @@
 import Foundation
 
-public struct VoiceProfile: Equatable, Codable {
+public struct VoiceProfile: Equatable, Codable, Sendable {
     public var id: String
     public var name: String
     public var sentenceLengthMean: Double

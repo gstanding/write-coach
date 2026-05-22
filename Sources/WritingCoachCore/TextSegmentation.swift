@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Sentence: Equatable {
+public struct Sentence: Equatable, Sendable {
     public var text: String
     public var range: TextRange
 
@@ -10,7 +10,7 @@ public struct Sentence: Equatable {
     }
 }
 
-public struct Paragraph: Equatable {
+public struct Paragraph: Equatable, Sendable {
     public var text: String
     public var range: TextRange
 

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct TextStats {
+public struct TextStats: Sendable {
     public var fillerWordHits: [(word: String, range: TextRange)]
     public var connectorWordHits: [(word: String, range: TextRange)]
     public var sentenceLengths: [Int]
@@ -19,7 +19,7 @@ public struct TextStats {
     }
 }
 
-public struct AnalysisContext {
+public struct AnalysisContext: Sendable {
     public var documentId: String
     public var body: String
     public var sentences: [Sentence]

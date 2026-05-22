@@ -129,8 +129,14 @@ struct IOSEditorView: View {
     }
 
     private func analyze() {
-        let ctx = Analyzer.analyze(documentId: documentId, body: bodyText, lexicon: .default, voice: nil)
-        suggestions = RuleEngine.default().run(ctx: ctx)
+        Task { @MainActor in
+            do {
+                let ctx = Analyzer.analyze(documentId: documentId, body: bodyText, lexicon: .default, voice: nil)
+                suggestions = try await RuleEngine.default().run(ctx: ctx)
+            } catch {
+                // handle error silently
+            }
+        }
     }
 
     private func applyFix(_ fix: Fix) {
