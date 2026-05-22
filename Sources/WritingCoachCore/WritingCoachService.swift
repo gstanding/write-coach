@@ -26,10 +26,10 @@ public struct WritingCoachService {
         try fileStore.load(documentId: id)
     }
 
-    public func analyzeDocument(id: String, lexicon: Lexicon = .default, voice: VoiceProfile? = nil, engine: RuleEngine = .default()) throws -> [Suggestion] {
+    public func analyzeDocument(id: String, lexicon: Lexicon = .default, voice: VoiceProfile? = nil, engine: RuleEngine = .default()) async throws -> [Suggestion] {
         let content = try loadDocument(id: id)
         let ctx = Analyzer.analyze(documentId: id, body: content.body, lexicon: lexicon, voice: voice)
-        return engine.run(ctx: ctx)
+        return try await engine.run(ctx: ctx)
     }
 
     public func listDocuments(query: String? = nil, tag: String? = nil, limit: Int = 50, offset: Int = 0) throws -> [DocumentMeta] {

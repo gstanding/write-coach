@@ -1,6 +1,6 @@
 import Foundation
 
-public struct OutlineNode: Equatable {
+public struct OutlineNode: Equatable, Sendable {
     public var level: Int
     public var title: String
     public var range: TextRange

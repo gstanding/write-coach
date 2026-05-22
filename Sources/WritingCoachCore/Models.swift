@@ -38,20 +38,20 @@ public struct FrontMatter: Equatable, Codable {
     }
 }
 
-public enum SuggestionCategory: String, Codable {
+public enum SuggestionCategory: String, Codable, Sendable {
     case structure
     case language
     case consistency
     case readability
 }
 
-public enum SuggestionSeverity: String, Codable {
+public enum SuggestionSeverity: String, Codable, Sendable {
     case info
     case warn
     case error
 }
 
-public struct TextRange: Hashable, Codable {
+public struct TextRange: Hashable, Codable, Sendable {
     public var start: Int
     public var end: Int
 
@@ -63,7 +63,7 @@ public struct TextRange: Hashable, Codable {
     public var length: Int { end - start }
 }
 
-public struct Fix: Hashable, Codable {
+public struct Fix: Hashable, Codable, Sendable {
     public var title: String
     public var range: TextRange
     public var replacement: String
@@ -75,7 +75,7 @@ public struct Fix: Hashable, Codable {
     }
 }
 
-public struct Suggestion: Hashable, Codable {
+public struct Suggestion: Hashable, Codable, Sendable {
     public var id: String
     public var ruleId: String
     public var category: SuggestionCategory

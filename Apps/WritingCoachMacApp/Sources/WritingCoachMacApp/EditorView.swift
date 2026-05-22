@@ -112,8 +112,15 @@ struct EditorView: View {
             titleText = c.frontMatter.title ?? ""
             bodyText = c.body
             outline = OutlineExtractor.extract(from: bodyText)
-            suggestions = try service.analyzeDocument(id: documentId)
-            errorText = nil
+            
+            Task { @MainActor in
+                do {
+                    suggestions = try await service.analyzeDocument(id: documentId)
+                    errorText = nil
+                } catch {
+                    errorText = String(describing: error)
+                }
+            }
         } catch {
             errorText = String(describing: error)
         }
@@ -150,13 +157,15 @@ struct EditorView: View {
 
     private func runAnalyzeNow() {
         guard let service = appModel.service else { return }
-        do {
-            outline = OutlineExtractor.extract(from: bodyText)
-            let ctx = Analyzer.analyze(documentId: documentId, body: bodyText, lexicon: .default, voice: nil)
-            suggestions = RuleEngine.default().run(ctx: ctx)
-            errorText = nil
-        } catch {
-            errorText = String(describing: error)
+        Task { @MainActor in
+            do {
+                outline = OutlineExtractor.extract(from: bodyText)
+                let ctx = Analyzer.analyze(documentId: documentId, body: bodyText, lexicon: .default, voice: nil)
+                suggestions = try await RuleEngine.default().run(ctx: ctx)
+                errorText = nil
+            } catch {
+                errorText = String(describing: error)
+            }
         }
     }
 

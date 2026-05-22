@@ -1,8 +1,8 @@
 import Foundation
 
-public protocol Rule {
+public protocol Rule: Sendable {
     var id: String { get }
-    func analyze(_ ctx: AnalysisContext) -> [Suggestion]
+    func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion]
 }
 
 public struct RuleEngine {
@@ -12,23 +12,52 @@ public struct RuleEngine {
         self.rules = rules
     }
 
-    public static func `default`(lexicon: Lexicon = .default) -> RuleEngine {
-        RuleEngine(rules: [
+    public static func `default`(lexicon: Lexicon = .default, llmProvider: LLMProvider? = nil) -> RuleEngine {
+        var defaultRules: [Rule] = [
             FillerWordRule(),
             ConnectorDensityRule(),
             SentenceLengthUniformityRule(),
             RepeatedSentenceStartRule(),
             RepeatedPhraseRule(),
             MissingEvidenceHintRule()
-        ])
+        ]
+        
+        if let provider = llmProvider {
+            defaultRules.append(
+                LLMRule(
+                    id: "LLM.LOGIC_COHERENCE",
+                    category: .structure,
+                    provider: provider,
+                    prompt: PromptManager.logicCoherencePrompt
+                )
+            )
+            defaultRules.append(
+                LLMRule(
+                    id: "LLM.TONE_AND_VOICE",
+                    category: .language,
+                    provider: provider,
+                    prompt: PromptManager.toneAndVoicePrompt
+                )
+            )
+        }
+        
+        return RuleEngine(rules: defaultRules)
     }
 
-    public func run(ctx: AnalysisContext) -> [Suggestion] {
-        var out: [Suggestion] = []
-        for r in rules {
-            out.append(contentsOf: r.analyze(ctx))
+    public func run(ctx: AnalysisContext) async throws -> [Suggestion] {
+        return try await withThrowingTaskGroup(of: [Suggestion].self) { group in
+            for r in rules {
+                group.addTask {
+                    try await r.analyze(ctx)
+                }
+            }
+            
+            var out: [Suggestion] = []
+            for try await results in group {
+                out.append(contentsOf: results)
+            }
+            return out.sorted { $0.range.start < $1.range.start }
         }
-        return out.sorted { $0.range.start < $1.range.start }
     }
 }
 
@@ -44,7 +73,7 @@ public struct FillerWordRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         guard !ctx.stats.fillerWordHits.isEmpty else { return [] }
         var out: [Suggestion] = []
         for (w, r) in ctx.stats.fillerWordHits.prefix(50) {
@@ -72,7 +101,7 @@ public struct ConnectorDensityRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         let hits = ctx.stats.connectorWordHits
         guard !hits.isEmpty else { return [] }
         let ns = ctx.body as NSString
@@ -113,7 +142,7 @@ public struct SentenceLengthUniformityRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         let lengths = ctx.stats.sentenceLengths
         guard lengths.count >= 8 else { return [] }
 
@@ -151,7 +180,7 @@ public struct RepeatedSentenceStartRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         let starts = ctx.sentences.map { sentence -> (String, TextRange) in
             let s = sentence.text.trimmingCharacters(in: .whitespacesAndNewlines)
             let prefix = String(s.prefix(4))
@@ -193,7 +222,7 @@ public struct RepeatedPhraseRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         guard let top = ctx.stats.repeatedPhrases.first, top.ranges.count >= 2 else { return [] }
         guard let firstRange = top.ranges.first else { return [] }
         let msg = "出现重复短语“\(top.phrase)”（≥\(top.ranges.count) 次）。可以替换其中几处，或删掉一处避免啰嗦。"
@@ -220,7 +249,7 @@ public struct MissingEvidenceHintRule: Rule {
 
     public init() {}
 
-    public func analyze(_ ctx: AnalysisContext) -> [Suggestion] {
+    public func analyze(_ ctx: AnalysisContext) async throws -> [Suggestion] {
         let keywords = ["我认为", "结论是", "总之", "所以", "显然", "本质上"]
         let evidence = ["例如", "比如", "数据", "引用", "案例", "实验", "统计"]
         let ns = ctx.body as NSString
